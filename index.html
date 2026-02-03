@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VALO Post Scheduler - LinkedIn Content Calendar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        },
+                        valo: {
+                            dark: '#0f172a',
+                            accent: '#3b82f6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .slide-in { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        
+        /* Calendar grid */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+        .calendar-cell { min-height: 120px; }
+        
+        /* Drag and drop */
+        .dragging { opacity: 0.5; }
+        .drag-over { background-color: rgba(59, 130, 246, 0.1); border: 2px dashed #3b82f6; }
+        
+        /* Card hover */
+        .post-card { transition: all 0.2s ease; }
+        .post-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        
+        /* Status badges */
+        .status-draft { @apply bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200; }
+        .status-scheduled { @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200; }
+        .status-published { @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200; }
+        .status-failed { @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200; }
+        
+        /* Template selector */
+        .template-card { transition: all 0.2s; cursor: pointer; }
+        .template-card:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .template-card.selected { ring: 2px; ring-color: #3b82f6; border-color: #3b82f6; }
+        
+        /* Queue timeline */
+        .timeline-line { position: absolute; left: 24px; top: 0; bottom: 0; width: 2px; background: #e2e8f0; }
+        .dark .timeline-line { background: #334155; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <div id="app" class="min-h-screen flex flex-col">
+        
+        <!-- Header -->
+        <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                            V
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-900 dark:text-white">VALO Scheduler</h1>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">LinkedIn Content Calendar</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Navigation -->
+                    <nav class="hidden md:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                        <button onclick="app.setView('calendar')" id="nav-calendar" class="px-4 py-2 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-600 shadow-sm">
+                            Calendar
+                        </button>
+                        <button onclick="app.setView('queue')" id="nav-queue" class="px-4 py-2 rounded-md text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                            Queue
+                        </button>
+                        <button onclick="app.setView('history')" id="nav-history" class="px-4 py-2 rounded-md text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                            History
+                        </button>
+                        <button onclick="app.setView('templates')" id="nav-templates" class="px-4 py-2 rounded-md text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                            Templates
+                        </button>
+                    </nav>
+                    
+                    <!-- Actions -->
+                    <div class="flex items-center gap-2">
+                        <button onclick="app.toggleDarkMode()" class="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors" title="Toggle Dark Mode">
+                            <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+                            <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+                        </button>
+                        <button onclick="app.openComposer()" class="hidden sm:flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            New Post
+                        </button>
+                        <div class="relative group">
+                            <button class="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                                <i data-lucide="more-vertical" class="w-5 h-5"></i>
+                            </button>
+                            <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                                <button onclick="app.exportCSV()" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-lg flex items-center gap-2">
+                                    <i data-lucide="download" class="w-4 h-4"></i> Export CSV
+                                </button>
+                                <button onclick="app.exportJSON()" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                                    <i data-lucide="file-json" class="w-4 h-4"></i> Export JSON
+                                </button>
+                                <label class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2">
+                                    <i data-lucide="upload" class="w-4 h-4"></i> Import JSON
+                                    <input type="file" accept=".json" onchange="app.importJSON(this)" class="hidden">
+                                </label>
+                                <button onclick="app.clearAllData()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 last:rounded-b-lg flex items-center gap-2">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i> Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile Nav -->
+                <div class="md:hidden flex gap-2 pb-3 overflow-x-auto">
+                    <button onclick="app.setView('calendar')" id="nav-calendar-mobile" class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300">
+                        Calendar
+                    </button>
+                    <button onclick="app.setView('queue')" id="nav-queue-mobile" class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap text-gray-600 dark:text-gray-400">
+                        Queue
+                    </button>
+                    <button onclick="app.setView('history')" id="nav-history-mobile" class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap text-gray-600 dark:text-gray-400">
+                        History
+                    </button>
+                    <button onclick="app.setView('templates')" id="nav-templates-mobile" class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap text-gray-600 dark:text-gray-400">
+                        Templates
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+            
+            <!-- Calendar View -->
+            <div id="view-calendar" class="fade-in">
+                <!-- Calendar Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-4">
+                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white" id="calendar-month-year"></h2>
+                        <div class="flex items-center gap-2">
+                            <button onclick="app.changeMonth(-1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            </button>
+                            <button onclick="app.goToToday()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                Today
+                            </button>
+                            <button onclick="app.changeMonth(1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-gray-400"></span> Draft</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-500"></span> Scheduled</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-500"></span> Published</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Weekday Headers -->
+                <div class="grid grid-cols-7 gap-1 mb-1">
+                    <div class="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">Sun</div>
+                    <div class="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">Mon</div>
+                    <div class="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">Tue</div>
+                    <div class="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">Wed</div>
+                    <div class="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">Thu</div>
+                    <div class="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">Fri</div>
+                    <div class="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">Sat</div>
+                </div>
+                
+                <!-- Calendar Grid -->
+                <div id="calendar-grid" class="bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <!-- Calendar cells rendered here -->
+                </div>
+            </div>
+
+            <!-- Queue View -->
+            <div id="view-queue" class="hidden fade-in">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Scheduled Posts</h2>
+                    <div class="flex items-center gap-2">
+                        <select id="queue-filter" onchange="app.renderQueue()" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm">
+                            <option value="all">All Posts</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="draft">Drafts</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="relative" id="queue-container">
+                    <!-- Queue timeline rendered here -->
+                </div>
+            </div>
+
+            <!-- History View -->
+            <div id="view-history" class="hidden fade-in">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Post History</h2>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="history-search" placeholder="Search posts..." oninput="app.renderHistory()" 
+                            class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm">
+                        <select id="history-filter" onchange="app.renderHistory()" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm">
+                            <option value="all">All Status</option>
+                            <option value="published">Published</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="history-container" class="space-y-4">
+                    <!-- History items rendered here -->
+                </div>
+            </div>
+
+            <!-- Templates View -->
+            <div id="view-templates" class="hidden fade-in">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Post Templates</h2>
+                    <button onclick="app.createTemplate()" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        Create Template
+                    </button>
+                </div>
+                
+                <div id="templates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Templates rendered here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Mobile FAB -->
+        <button onclick="app.openComposer()" class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110 z-40">
+            <i data-lucide="plus" class="w-6 h-6"></i>
+        </button>
+    </div>
+
+    <!-- Modal: Post Composer -->
+    <div id="modal-composer" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Create Post</h2>
+                <button onclick="app.closeModal('composer')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-6">
+                <!-- Template Selector -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Start from Template</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="composer-templates">
+                        <!-- Templates rendered here -->
+                    </div>
+                </div>
+                
+                <!-- Post Content -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Content</label>
+                        <span class="text-xs text-gray-500 dark:text-gray-400" id="char-count">0/3000</span>
+                    </div>
+                    <textarea id="post-content" rows="8" placeholder="What do you want to share?" 
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                        oninput="app.updateCharCount()"></textarea>
+                </div>
+                
+                <!-- Schedule -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date</label>
+                        <input type="date" id="post-date" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Time</label>
+                        <input type="time" id="post-time" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500">
+                    </div>
+                </div>
+                
+                <!-- Post Settings -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="post-auto-publish" class="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">Auto-publish</span>
+                        </label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="app.saveAsDraft()" 
+                            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            Save Draft
+                        </button>
+                        <button type="button" onclick="app.schedulePost()" 
+                            class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors">
+                            Schedule
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Edit Post -->
+    <div id="modal-edit" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Edit Post</h2>
+                <button onclick="app.closeModal('edit')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="edit-post-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Content</label>
+                    <textarea id="edit-content" rows="6" 
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 resize-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date</label>
+                        <input type="date" id="edit-date" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Time</label>
+                        <input type="time" id="edit-time" 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500">
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 pt-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="edit-auto-publish" class="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">Auto-publish when scheduled</span>
+                    </label>
+                </div>
+                <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button onclick="app.closeModal('edit')" 
+                        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        Cancel
+                    </button>
+                    <button onclick="app.updatePost()" 
+                        class="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Template Editor -->
+    <div id="modal-template" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-xl w-full">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white" id="template-modal-title">Edit Template</h2>
+                <button onclick="app.closeModal('template')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="template-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Template Name</label>
+                    <input type="text" id="template-name" 
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
+                    <select id="template-category" 
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500">
+                        <option value="thought-leadership">Thought Leadership</option>
+                        <option value="company-update">Company Update</option>
+                        <option value="engagement">Engagement</option>
+                        <option value="promotional">Promotional</option>
+                        <option value="personal">Personal Story</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Content</label>
+                    <textarea id="template-content" rows="6" 
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 resize-none"></textarea>
+                </div>
+                <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button onclick="app.closeModal('template')" 
+                        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        Cancel
+                    </button>
+                    <button onclick="app.saveTemplate()" 
+                        class="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors">
+                        Save Template
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Post Preview -->
+    <div id="modal-preview" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-lg w-full">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Post Preview</h2>
+                <button onclick="app.closeModal('preview')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <!-- LinkedIn-style preview -->
+                <div class="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-gray-900">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 rounded-full bg-primary-600 flex items-center justify-center text-white font-bold text-lg">
+                            CM
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-900 dark:text-white">Chris McMenemy</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Founder at VALO Studios</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500" id="preview-time">Just now</p>
+                        </div>
+                    </div>
+                    <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap mb-4" id="preview-content"></div>
+                    <div class="flex items-center gap-4 text-gray-500 dark:text-gray-400 text-sm">
+                        <span class="flex items-center gap-1"><i data-lucide="thumbs-up" class="w-4 h-4"></i> Like</span>
+                        <span class="flex items-center gap-1"><i data-lucide="message-circle" class="w-4 h-4"></i> Comment</span>
+                        <span class="flex items-center gap-1"><i data-lucide="repeat" class="w-4 h-4"></i> Repost</span>
+                        <span class="flex items-center gap-1"><i data-lucide="send" class="w-4 h-4"></i> Send</span>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button onclick="app.closeModal('preview')" 
+                        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        Close
+                    </button>
+                    <button onclick="app.publishNowFromPreview()" 
+                        class="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors">
+                        Publish Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * VALO LinkedIn Post Scheduler
+         * Content calendar and automated posting system
+         */
+        
+        const app = {
+            // Default templates
+            defaultTemplates: [
+                {
+                    id: 't1',
+                    name: 'Thought Leadership',
+                    category: 'thought-leadership',
+                    content: '💡 Insight on [TOPIC]\n\n[Share your unique perspective or insight about an industry trend]\n\nWhat are your thoughts on this? Let me know in the comments. 👇\n\n#ThoughtLeadership #[Industry] #Innovation'
+                },
+                {
+                    id: 't2',
+                    name: 'Company Update',
+                    category: 'company-update',
+                    content: '🚀 Exciting news from VALO Studios!\n\n[Share a recent milestone, project completion, or company update]\n\nProud of what we\'re building and grateful for our amazing team and clients.\n\n#StartupLife #AI #Innovation #VALOStudios'
+                },
+                {
+                    id: 't3',
+                    name: 'Value Proposition',
+                    category: 'promotional',
+                    content: '⚡ Struggling with [PROBLEM]?\n\nHere\'s what we\'ve learned helping [X] companies [achieve outcome]:\n\n1. [Key insight 1]\n2. [Key insight 2]\n3. [Key insight 3]\n\nWant to dive deeper? Let\'s connect.\n\n#BusinessGrowth #AI #Consulting'
+                },
+                {
+                    id: 't4',
+                    name: 'Engagement Question',
+                    category: 'engagement',
+                    content: '❓ Quick question for my network:\n\n[Ask an engaging question related to your industry or expertise]\n\nI\'ll start: [Share your answer]\n\nDrop your thoughts below! 👇\n\n#Discussion #Networking #[Industry]'
+                },
+                {
+                    id: 't5',
+                    name: 'Personal Story',
+                    category: 'personal',
+                    content: '📖 [Number] years ago, I [share a personal story or journey]\n\nFast forward to today: [current situation/outcome]\n\nThe lesson? [Key takeaway]\n\nWhat\'s a lesson you\'ve learned on your journey?\n\n#Entrepreneurship #Journey #LessonsLearned'
+                },
+                {
+                    id: 't6',
+                    name: 'Industry Trend',
+                    category: 'thought-leadership',
+                    content: '🔮 The future of [INDUSTRY] is being shaped by:\n\n• [Trend 1]\n• [Trend 2]\n• [Trend 3]\n\nAt VALO Studios, we\'re helping businesses navigate these changes with AI-powered solutions.\n\nWhat trends are you watching?\n\n#FutureOfWork #AI #Trends'
+                }
+            ],
+            
+            // State
+            posts: [],
+            templates: [],
+            currentView: 'calendar',
+            currentDate: new Date(),
+            selectedTemplate: null,
+            previewPostId: null,
+            
+            // Categories
+            categories: {
+                'thought-leadership': { label: 'Thought Leadership', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
+                'company-update': { label: 'Company Update', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+                'engagement': { label: 'Engagement', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+                'promotional': { label: 'Promotional', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
+                'personal': { label: 'Personal Story', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200' }
+            },
+            
+            // Initialize
+            init() {
+                this.loadData();
+                this.setupDarkMode();
+                this.renderAll();
+                lucide.createIcons();
+                
+                // Check for posts that should be published
+                this.checkScheduledPosts();
+                setInterval(() => this.checkScheduledPosts(), 60000); // Check every minute
+            },
+            
+            // Data persistence
+            loadData() {
+                try {
+                    const storedPosts = localStorage.getItem('valo_scheduler_posts');
+                    const storedTemplates = localStorage.getItem('valo_scheduler_templates');
+                    
+                    this.posts = storedPosts ? JSON.parse(storedPosts) : this.getSamplePosts();
+                    this.templates = storedTemplates ? JSON.parse(storedTemplates) : [...this.defaultTemplates];
+                    
+                    this.saveData();
+                } catch (e) {
+                    console.error('Error loading data:', e);
+                    this.posts = this.getSamplePosts();
+                    this.templates = [...this.defaultTemplates];
+                }
+            },
+            
+            saveData() {
+                try {
+                    localStorage.setItem('valo_scheduler_posts', JSON.stringify(this.posts));
+                    localStorage.setItem('valo_scheduler_templates', JSON.stringify(this.templates));
+                } catch (e) {
+                    console.error('Error saving data:', e);
+                }
+            },
+            
+            getSamplePosts() {
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                return [
+                    {
+                        id: 'p1',
+                        content: 'Excited to share that VALO Studios just completed an AI readiness assessment for a major retail client! The insights we uncovered will save them an estimated 40 hours per week. 🚀\n\n#AI #Consulting #Retail #Innovation',
+                        scheduledDate: today.toISOString().split('T')[0],
+                        scheduledTime: '09:00',
+                        status: 'scheduled',
+                        autoPublish: true,
+                        createdAt: yesterday.toISOString(),
+                        updatedAt: yesterday.toISOString()
+                    },
+                    {
+                        id: 'p2',
+                        content: '💡 Three signs your business is ready for AI integration:\n\n1. You have repetitive tasks that follow clear patterns\n2. Your team spends hours on data entry and analysis\n3. You\'re missing insights because data is siloed\n\nSound familiar? Let\'s talk about your AI readiness.\n\n#AI #BusinessGrowth #DigitalTransformation',
+                        scheduledDate: tomorrow.toISOString().split('T')[0],
+                        scheduledTime: '14:30',
+                        status: 'draft',
+                        autoPublish: false,
+                        createdAt: today.toISOString(),
+                        updatedAt: today.toISOString()
+                    },
+                    {
+                        id: 'p3',
+                        content: 'Just published our latest insights on AI implementation strategies for startups. The key takeaway? Start small, measure everything, and scale what works.\n\nLink in comments! 👇\n\n#StartupLife #AI #Strategy',
+                        scheduledDate: yesterday.toISOString().split('T')[0],
+                        scheduledTime: '10:00',
+                        status: 'published',
+                        autoPublish: true,
+                        createdAt: new Date(yesterday.getTime() - 86400000).toISOString(),
+                        updatedAt: yesterday.toISOString(),
+                        publishedAt: yesterday.toISOString()
+                    }
+                ];
+            },
+            
+            // Dark mode
+            setupDarkMode() {
+                const saved = localStorage.getItem('valo_scheduler_dark_mode');
+                if (saved === 'true' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                }
+            },
+            
+            toggleDarkMode() {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('valo_scheduler_dark_mode', isDark);
+                lucide.createIcons();
+            },
+            
+            // Navigation
+            setView(view) {
+                this.currentView = view;
+                this.updateNavState();
+                
+                // Hide all views
+                ['calendar', 'queue', 'history', 'templates'].forEach(v => {
+                    document.getElementById(`view-${v}`).classList.add('hidden');
+                });
+                
+                // Show selected view
+                document.getElementById(`view-${view}`).classList.remove('hidden');
+                
+                // Render view-specific content
+                if (view === 'calendar') this.renderCalendar();
+                if (view === 'queue') this.renderQueue();
+                if (view === 'history') this.renderHistory();
+                if (view === 'templates') this.renderTemplates();
+                
+                lucide.createIcons();
+            },
+            
+            updateNavState() {
+                const views = ['calendar', 'queue', 'history', 'templates'];
+                views.forEach(v => {
+                    const btn = document.getElementById(`nav-${v}`);
+                    const mobileBtn = document.getElementById(`nav-${v}-mobile`);
+                    
+                    if (btn) {
+                        if (v === this.currentView) {
+                            btn.className = 'px-4 py-2 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-600 shadow-sm';
+                        } else {
+                            btn.className = 'px-4 py-2 rounded-md text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white';
+                        }
+                    }
+                    
+                    if (mobileBtn) {
+                        if (v === this.currentView) {
+                            mobileBtn.className = 'px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300';
+                        } else {
+                            mobileBtn.className = 'px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap text-gray-600 dark:text-gray-400';
+                        }
+                    }
+                });
+            },
+            
+            renderAll() {
+                this.renderCalendar();
+                this.renderQueue();
+                this.renderHistory();
+                this.renderTemplates();
+            },
+            
+            // Calendar functions
+            renderCalendar() {
+                const year = this.currentDate.getFullYear();
+                const month = this.currentDate.getMonth();
+                
+                // Update header
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                                   'July', 'August', 'September', 'October', 'November', 'December'];
+                document.getElementById('calendar-month-year').textContent = `${monthNames[month]} ${year}`;
+                
+                // Calculate calendar grid
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const today = new Date().toISOString().split('T')[0];
+                
+                let html = '';
+                
+                // Empty cells before first day
+                for (let i = 0; i < firstDay; i++) {
+                    html += '<div class="calendar-cell bg-gray-50 dark:bg-gray-800/50"></div>';
+                }
+                
+                // Days
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dayPosts = this.posts.filter(p => p.scheduledDate === dateStr);
+                    const isToday = dateStr === today;
+                    
+                    html += `
+                        <div class="calendar-cell bg-white dark:bg-gray-800 p-2 relative min-h-[120px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${isToday ? 'ring-2 ring-primary-500 ring-inset' : ''}"
+                             onclick="app.openComposer('${dateStr}')">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-sm font-medium ${isToday ? 'text-primary-600 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'}">${day}</span>
+                                ${dayPosts.length > 0 ? `<span class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">${dayPosts.length}</span>` : ''}
+                            </div>
+                            <div class="space-y-1">
+                                ${dayPosts.slice(0, 3).map(post => `
+                                    <div class="text-xs p-1.5 rounded ${this.getStatusColor(post.status)} truncate cursor-pointer"
+                                         onclick="event.stopPropagation(); app.editPost('${post.id}')"
+                                         title="${post.content.substring(0, 50)}...">
+                                        ${post.content.substring(0, 30)}...
+                                    </div>
+                                `).join('')}
+                                ${dayPosts.length > 3 ? `<div class="text-xs text-gray-500 dark:text-gray-400 pl-1">+${dayPosts.length - 3} more</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('calendar-grid').innerHTML = html;
+            },
+            
+            changeMonth(delta) {
+                this.currentDate.setMonth(this.currentDate.getMonth() + delta);
+                this.renderCalendar();
+            },
+            
+            goToToday() {
+                this.currentDate = new Date();
+                this.renderCalendar();
+            },
+            
+            getStatusColor(status) {
+                const colors = {
+                    'draft': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+                    'scheduled': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+                    'published': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                    'failed': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                };
+                return colors[status] || colors.draft;
+            },
+            
+            // Queue functions
+            renderQueue() {
+                const filter = document.getElementById('queue-filter').value;
+                const now = new Date();
+                const nowStr = now.toISOString();
+                
+                let filtered = this.posts.filter(p => {
+                    if (filter === 'all') return p.status !== 'published' && p.status !== 'failed';
+                    return p.status === filter;
+                });
+                
+                // Sort by scheduled date
+                filtered.sort((a, b) => {
+                    const dateA = new Date(`${a.scheduledDate}T${a.scheduledTime}`);
+                    const dateB = new Date(`${b.scheduledDate}T${b.scheduledTime}`);
+                    return dateA - dateB;
+                });
+                
+                if (filtered.length === 0) {
+                    document.getElementById('queue-container').innerHTML = `
+                        <div class="text-center py-12">
+                            <i data-lucide="calendar-check" class="w-12 h-12 mx-auto text-gray-400 mb-4"></i>
+                            <p class="text-gray-500 dark:text-gray-400">No posts in queue</p>
+                            <button onclick="app.openComposer()" class="mt-4 text-primary-600 hover:text-primary-700 font-medium">
+                                Create your first post
+                            </button>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+                
+                let html = '<div class="timeline-line"></div><div class="space-y-6 pl-12">';
+                
+                filtered.forEach(post => {
+                    const scheduledDateTime = new Date(`${post.scheduledDate}T${post.scheduledTime}`);
+                    const isPast = scheduledDateTime < now;
+                    
+                    html += `
+                        <div class="relative">
+                            <div class="absolute -left-8 top-0 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 ${isPast ? 'bg-gray-400' : 'bg-primary-500'}"></div>
+                            <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 post-card">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                                            ${this.formatDateTime(post.scheduledDate, post.scheduledTime)}
+                                            ${isPast ? ' <span class="text-orange-500">(Overdue)</span>' : ''}
+                                        </p>
+                                    </div>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium ${this.getStatusColor(post.status)}">
+                                        ${post.status.charAt(0).toUpperCase() + post.status.slice(1)}
+                                    </span>
+                                </div>
+                                <p class="text-gray-800 dark:text-gray-200 mb-3 line-clamp-3">${post.content}</p>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="app.editPost('${post.id}')" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                        Edit
+                                    </button>
+                                    <button onclick="app.previewPost('${post.id}')" class="text-sm text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                                        Preview
+                                    </button>
+                                    <button onclick="app.deletePost('${post.id}')" class="text-sm text-red-600 hover:text-red-700">
+                                        Delete
+                                    </button>
+                                    ${post.status === 'scheduled' ? `
+                                        <button onclick="app.publishNow('${post.id}')" class="text-sm text-green-600 hover:text-green-700 ml-auto">
+                                            Publish Now
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                document.getElementById('queue-container').innerHTML = html;
+            },
+            
+            // History functions
+            renderHistory() {
+                const search = document.getElementById('history-search').value.toLowerCase();
+                const filter = document.getElementById('history-filter').value;
+                
+                let filtered = this.posts.filter(p => {
+                    const matchesSearch = !search || p.content.toLowerCase().includes(search);
+                    const matchesFilter = filter === 'all' || p.status === filter;
+                    return matchesSearch && matchesFilter && (p.status === 'published' || p.status === 'failed');
+                });
+                
+                // Sort by published date or updated date
+                filtered.sort((a, b) => {
+                    const dateA = new Date(a.publishedAt || a.updatedAt);
+                    const dateB = new Date(b.publishedAt || b.updatedAt);
+                    return dateB - dateA;
+                });
+                
+                if (filtered.length === 0) {
+                    document.getElementById('history-container').innerHTML = `
+                        <div class="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <i data-lucide="history" class="w-12 h-12 mx-auto text-gray-400 mb-4"></i>
+                            <p class="text-gray-500 dark:text-gray-400">No posts in history</p>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+                
+                const html = filtered.map(post => `
+                    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium ${this.getStatusColor(post.status)}">
+                                    ${post.status.charAt(0).toUpperCase() + post.status.slice(1)}
+                                </span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                                    ${post.publishedAt ? 'Published: ' + this.formatDateTime(post.publishedAt.split('T')[0], post.publishedAt.split('T')[1]?.substring(0, 5) || '00:00') : ''}
+                                </span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="app.duplicatePost('${post.id}')" class="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" title="Duplicate">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="app.deletePost('${post.id}')" class="p-2 text-red-500 hover:text-red-700" title="Delete">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">${post.content}</p>
+                    </div>
+                `).join('');
+                
+                document.getElementById('history-container').innerHTML = html;
+                lucide.createIcons();
+            },
+            
+            // Templates functions
+            renderTemplates() {
+                const html = this.templates.map(template => {
+                    const category = this.categories[template.category];
+                    return `
+                        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 post-card">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="font-semibold text-gray-900 dark:text-white">${template.name}</h3>
+                                    <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${category.color}">
+                                        ${category.label}
+                                    </span>
+                                </div>
+                                <div class="flex gap-1">
+                                    <button onclick="app.editTemplate('${template.id}')" class="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                                    </button>
+                                    <button onclick="app.useTemplate('${template.id}')" class="p-2 text-primary-600 hover:text-primary-700">
+                                        <i data-lucide="plus" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-4">${template.content}</p>
+                            <button onclick="app.useTemplate('${template.id}')" 
+                                class="mt-4 w-full py-2 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg text-sm font-medium hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors">
+                                Use Template
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+                
+                document.getElementById('templates-grid').innerHTML = html;
+                lucide.createIcons();
+            },
+            
+            createTemplate() {
+                document.getElementById('template-id').value = '';
+                document.getElementById('template-name').value = '';
+                document.getElementById('template-category').value = 'thought-leadership';
+                document.getElementById('template-content').value = '';
+                document.getElementById('template-modal-title').textContent = 'Create Template';
+                this.openModal('template');
+            },
+            
+            editTemplate(id) {
+                const template = this.templates.find(t => t.id === id);
+                if (!template) return;
+                
+                document.getElementById('template-id').value = template.id;
+                document.getElementById('template-name').value = template.name;
+                document.getElementById('template-category').value = template.category;
+                document.getElementById('template-content').value = template.content;
+                document.getElementById('template-modal-title').textContent = 'Edit Template';
+                this.openModal('template');
+            },
+            
+            saveTemplate() {
+                const id = document.getElementById('template-id').value;
+                const name = document.getElementById('template-name').value.trim();
+                const category = document.getElementById('template-category').value;
+                const content = document.getElementById('template-content').value.trim();
+                
+                if (!name || !content) {
+                    alert('Please fill in all fields');
+                    return;
+                }
+                
+                if (id) {
+                    // Update existing
+                    const template = this.templates.find(t => t.id === id);
+                    if (template) {
+                        template.name = name;
+                        template.category = category;
+                        template.content = content;
+                    }
+                } else {
+                    // Create new
+                    this.templates.push({
+                        id: 't' + Date.now(),
+                        name,
+                        category,
+                        content
+                    });
+                }
+                
+                this.saveData();
+                this.closeModal('template');
+                this.renderTemplates();
+            },
+            
+            useTemplate(id) {
+                const template = this.templates.find(t => t.id === id);
+                if (template) {
+                    this.openComposer();
+                    document.getElementById('post-content').value = template.content;
+                    this.updateCharCount();
+                }
+            },
+            
+            // Composer functions
+            openComposer(date = null) {
+                this.selectedTemplate = null;
+                document.getElementById('post-content').value = '';
+                document.getElementById('post-date').value = date || new Date().toISOString().split('T')[0];
+                document.getElementById('post-time').value = '09:00';
+                document.getElementById('post-auto-publish').checked = true;
+                this.updateCharCount();
+                this.renderComposerTemplates();
+                this.openModal('composer');
+            },
+            
+            renderComposerTemplates() {
+                const html = this.templates.slice(0, 4).map(template => `
+                    <div class="template-card bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-600"
+                         onclick="app.selectTemplate('${template.id}')">
+                        <i data-lucide="file-text" class="w-6 h-6 mx-auto mb-2 text-gray-400"></i>
+                        <p class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">${template.name}</p>
+                    </div>
+                `).join('');
+                
+                document.getElementById('composer-templates').innerHTML = html;
+                lucide.createIcons();
+            },
+            
+            selectTemplate(id) {
+                const template = this.templates.find(t => t.id === id);
+                if (template) {
+                    document.getElementById('post-content').value = template.content;
+                    this.updateCharCount();
+                    
+                    // Update UI
+                    document.querySelectorAll('.template-card').forEach(card => {
+                        card.classList.remove('selected', 'ring-2', 'ring-primary-500', 'border-primary-500');
+                    });
+                    event.currentTarget.classList.add('selected', 'ring-2', 'ring-primary-500', 'border-primary-500');
+                }
+            },
+            
+            updateCharCount() {
+                const content = document.getElementById('post-content').value;
+                document.getElementById('char-count').textContent = `${content.length}/3000`;
+            },
+            
+            saveAsDraft() {
+                const content = document.getElementById('post-content').value.trim();
+                if (!content) {
+                    alert('Please enter some content');
+                    return;
+                }
+                
+                const post = {
+                    id: 'p' + Date.now(),
+                    content,
+                    scheduledDate: document.getElementById('post-date').value,
+                    scheduledTime: document.getElementById('post-time').value,
+                    status: 'draft',
+                    autoPublish: false,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                this.posts.push(post);
+                this.saveData();
+                this.closeModal('composer');
+                this.renderAll();
+                
+                // Switch to queue view
+                this.setView('queue');
+            },
+            
+            schedulePost() {
+                const content = document.getElementById('post-content').value.trim();
+                if (!content) {
+                    alert('Please enter some content');
+                    return;
+                }
+                
+                const post = {
+                    id: 'p' + Date.now(),
+                    content,
+                    scheduledDate: document.getElementById('post-date').value,
+                    scheduledTime: document.getElementById('post-time').value,
+                    status: 'scheduled',
+                    autoPublish: document.getElementById('post-auto-publish').checked,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                this.posts.push(post);
+                this.saveData();
+                this.closeModal('composer');
+                this.renderAll();
+                
+                // Switch to queue view
+                this.setView('queue');
+            },
+            
+            // Edit/Update functions
+            editPost(id) {
+                const post = this.posts.find(p => p.id === id);
+                if (!post) return;
+                
+                document.getElementById('edit-post-id').value = post.id;
+                document.getElementById('edit-content').value = post.content;
+                document.getElementById('edit-date').value = post.scheduledDate;
+                document.getElementById('edit-time').value = post.scheduledTime;
+                document.getElementById('edit-auto-publish').checked = post.autoPublish;
+                
+                this.openModal('edit');
+            },
+            
+            updatePost() {
+                const id = document.getElementById('edit-post-id').value;
+                const post = this.posts.find(p => p.id === id);
+                if (!post) return;
+                
+                post.content = document.getElementById('edit-content').value.trim();
+                post.scheduledDate = document.getElementById('edit-date').value;
+                post.scheduledTime = document.getElementById('edit-time').value;
+                post.autoPublish = document.getElementById('edit-auto-publish').checked;
+                post.updatedAt = new Date().toISOString();
+                
+                this.saveData();
+                this.closeModal('edit');
+                this.renderAll();
+            },
+            
+            deletePost(id) {
+                if (!confirm('Are you sure you want to delete this post?')) return;
+                
+                this.posts = this.posts.filter(p => p.id !== id);
+                this.saveData();
+                this.renderAll();
+            },
+            
+            duplicatePost(id) {
+                const post = this.posts.find(p => p.id === id);
+                if (!post) return;
+                
+                const newPost = {
+                    ...post,
+                    id: 'p' + Date.now(),
+                    status: 'draft',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    publishedAt: null
+                };
+                
+                this.posts.push(newPost);
+                this.saveData();
+                this.renderAll();
+            },
+            
+            // Publishing functions
+            previewPost(id) {
+                const post = this.posts.find(p => p.id === id);
+                if (!post) return;
+                
+                this.previewPostId = id;
+                document.getElementById('preview-content').textContent = post.content;
+                document.getElementById('preview-time').textContent = this.formatDateTime(post.scheduledDate, post.scheduledTime);
+                this.openModal('preview');
+            },
+            
+            publishNowFromPreview() {
+                if (this.previewPostId) {
+                    this.publishNow(this.previewPostId);
+                    this.closeModal('preview');
+                }
+            },
+            
+            publishNow(id) {
+                const post = this.posts.find(p => p.id === id);
+                if (!post) return;
+                
+                // Simulate publishing
+                if (confirm('Publish this post now? (Note: This is a simulation)')) {
+                    post.status = 'published';
+                    post.publishedAt = new Date().toISOString();
+                    post.updatedAt = new Date().toISOString();
+                    this.saveData();
+                    this.renderAll();
+                    
+                    // Show success message
+                    this.showToast('Post published successfully!');
+                }
+            },
+            
+            checkScheduledPosts() {
+                const now = new Date();
+                const postsToPublish = this.posts.filter(p => {
+                    if (p.status !== 'scheduled' || !p.autoPublish) return false;
+                    const scheduledTime = new Date(`${p.scheduledDate}T${p.scheduledTime}`);
+                    return scheduledTime <= now;
+                });
+                
+                postsToPublish.forEach(post => {
+                    // In a real app, this would call the LinkedIn API
+                    // For now, we simulate success
+                    post.status = 'published';
+                    post.publishedAt = new Date().toISOString();
+                    post.updatedAt = new Date().toISOString();
+                });
+                
+                if (postsToPublish.length > 0) {
+                    this.saveData();
+                    this.renderAll();
+                    this.showToast(`${postsToPublish.length} post(s) published automatically`);
+                }
+            },
+            
+            // Export/Import functions
+            exportCSV() {
+                const headers = ['ID', 'Content', 'Scheduled Date', 'Scheduled Time', 'Status', 'Auto Publish', 'Created At', 'Published At'];
+                const rows = this.posts.map(p => [
+                    p.id,
+                    `"${p.content.replace(/"/g, '""')}"`,
+                    p.scheduledDate,
+                    p.scheduledTime,
+                    p.status,
+                    p.autoPublish ? 'Yes' : 'No',
+                    p.createdAt,
+                    p.publishedAt || ''
+                ]);
+                
+                const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                this.downloadFile(csv, 'valo-posts.csv', 'text/csv');
+            },
+            
+            exportJSON() {
+                const data = {
+                    posts: this.posts,
+                    templates: this.templates,
+                    exportedAt: new Date().toISOString()
+                };
+                this.downloadFile(JSON.stringify(data, null, 2), 'valo-scheduler-backup.json', 'application/json');
+            },
+            
+            importJSON(input) {
+                const file = input.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.posts) this.posts = data.posts;
+                        if (data.templates) this.templates = data.templates;
+                        this.saveData();
+                        this.renderAll();
+                        this.showToast('Data imported successfully!');
+                    } catch (err) {
+                        alert('Error importing file: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+                input.value = '';
+            },
+            
+            downloadFile(content, filename, type) {
+                const blob = new Blob([content], { type });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+            
+            clearAllData() {
+                if (!confirm('Are you sure you want to delete all posts and templates? This cannot be undone.')) return;
+                
+                this.posts = [];
+                this.templates = [...this.defaultTemplates];
+                this.saveData();
+                this.renderAll();
+                this.showToast('All data cleared');
+            },
+            
+            // Utility functions
+            formatDate(dateStr) {
+                if (!dateStr) return '-';
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            },
+            
+            formatDateTime(dateStr, timeStr) {
+                if (!dateStr) return '-';
+                const date = new Date(`${dateStr}T${timeStr || '00:00'}`);
+                return date.toLocaleString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: 'numeric', 
+                    minute: '2-digit',
+                    hour12: true 
+                });
+            },
+            
+            showToast(message) {
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-6 py-3 rounded-lg shadow-lg z-50 fade-in';
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transition = 'opacity 0.3s';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            },
+            
+            // Modal handling
+            openModal(modalId) {
+                const modal = document.getElementById(`modal-${modalId}`);
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                lucide.createIcons();
+            },
+            
+            closeModal(modalId) {
+                const modal = document.getElementById(`modal-${modalId}`);
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        };
+        
+        // Close modals on outside click
+        document.querySelectorAll('[id^="modal-"]').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+            });
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
