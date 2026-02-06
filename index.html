@@ -1,0 +1,2138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VALO LinkedIn Post Scheduler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --valo-purple: #8B5CF6;
+            --valo-purple-light: #A78BFA;
+            --valo-purple-dark: #7C3AED;
+            --valo-purple-glow: rgba(139, 92, 246, 0.3);
+            --bg-dark: #0F0F0F;
+            --bg-card: #1A1A1A;
+            --bg-elevated: #242424;
+            --bg-input: #2D2D2D;
+            --border: #333333;
+            --border-hover: #444444;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A1A1AA;
+            --text-muted: #71717A;
+            --success: #22C55E;
+            --warning: #F59E0B;
+            --error: #EF4444;
+            --info: #3B82F6;
+            --linkedin-blue: #0A66C2;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            --shadow-glow: 0 0 20px rgba(139, 92, 246, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--valo-purple), var(--valo-purple-dark));
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .logo-text h1 {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-text span {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: var(--bg-card);
+            padding: 6px;
+            border-radius: var(--radius);
+            width: fit-content;
+            border: 1px solid var(--border);
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-tab:hover {
+            color: var(--text-primary);
+            background: var(--bg-elevated);
+        }
+
+        .nav-tab.active {
+            background: var(--valo-purple);
+            color: white;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        /* Panels */
+        .panel {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--valo-purple);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--valo-purple-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-input);
+            border-color: var(--border-hover);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #16A34A;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            justify-content: center;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            background: var(--bg-elevated);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            border-color: var(--valo-purple);
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--valo-purple-light);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Calendar */
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .calendar-title {
+            font-size: 20px;
+            font-weight: 600;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .calendar-day-header {
+            background: var(--bg-card);
+            padding: 14px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .calendar-day {
+            background: var(--bg-card);
+            min-height: 140px;
+            padding: 10px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .calendar-day:hover {
+            background: var(--bg-elevated);
+        }
+
+        .calendar-day.other-month {
+            background: rgba(26, 26, 26, 0.5);
+            color: var(--text-muted);
+        }
+
+        .calendar-day.today {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .calendar-day.today .day-number {
+            background: var(--valo-purple);
+            color: white;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+
+        .calendar-day.drag-over {
+            background: rgba(139, 92, 246, 0.15);
+            box-shadow: inset 0 0 0 2px var(--valo-purple);
+        }
+
+        .day-number {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .day-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .calendar-post {
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            cursor: grab;
+            border-left: 3px solid var(--valo-purple);
+            background: var(--bg-elevated);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .calendar-post:hover {
+            opacity: 0.9;
+            transform: translateX(2px);
+        }
+
+        .calendar-post.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .calendar-post.status-draft { border-left-color: var(--text-muted); }
+        .calendar-post.status-scheduled { border-left-color: var(--warning); }
+        .calendar-post.status-posted { border-left-color: var(--success); }
+
+        .calendar-post-type {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        /* Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 24px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* Queue */
+        .queue-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .queue-item {
+            background: var(--bg-elevated);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .queue-item:hover {
+            border-color: var(--valo-purple);
+            transform: translateX(4px);
+        }
+
+        .queue-item.dragging {
+            opacity: 0.5;
+        }
+
+        .queue-item-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .queue-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .queue-item-title {
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .queue-item-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .queue-item-actions {
+            display: flex;
+            gap: 6px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .queue-item:hover .queue-item-actions {
+            opacity: 1;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-draft { background: rgba(113, 113, 122, 0.2); color: var(--text-secondary); }
+        .status-scheduled { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .status-posted { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+
+        /* Type Badges */
+        .type-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .type-story { background: rgba(139, 92, 246, 0.2); color: var(--valo-purple-light); }
+        .type-list { background: rgba(59, 130, 246, 0.2); color: #60A5FA; }
+        .type-hottake { background: rgba(239, 68, 68, 0.2); color: #F87171; }
+        .type-question { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .type-framework { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+
+        /* Topic Suggestions */
+        .suggestions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .suggestion-card {
+            background: var(--bg-elevated);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion-card:hover {
+            border-color: var(--valo-purple);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+
+        .suggestion-category {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--valo-purple-light);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .suggestion-title {
+            font-weight: 500;
+            font-size: 15px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .suggestion-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .suggestion-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Post Composer */
+        .composer-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+        }
+
+        .composer-main {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .composer-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--valo-purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        .form-textarea {
+            min-height: 200px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        /* Template Selector */
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .template-option {
+            padding: 16px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-elevated);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .template-option:hover {
+            border-color: var(--valo-purple);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .template-option.active {
+            border-color: var(--valo-purple);
+            background: rgba(139, 92, 246, 0.1);
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+        }
+
+        .template-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .template-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .template-option.active .template-name {
+            color: var(--valo-purple-light);
+        }
+
+        /* Preview Card */
+        .preview-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            color: #333;
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .preview-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--valo-purple), var(--valo-purple-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .preview-meta {
+            flex: 1;
+        }
+
+        .preview-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #0A0A0A;
+        }
+
+        .preview-title {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .preview-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .preview-content {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #1a1a1a;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 20px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+
+        .preview-action {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        /* Character Count */
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .char-count.warning {
+            color: var(--warning);
+        }
+
+        .char-count.error {
+            color: var(--error);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 24px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 56px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* Topic Tags */
+        .topic-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .topic-tag {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .topic-tag:hover {
+            transform: translateY(-1px);
+        }
+
+        .topic-ai { background: rgba(139, 92, 246, 0.15); color: #A78BFA; }
+        .topic-value { background: rgba(34, 197, 94, 0.15); color: #4ADE80; }
+        .topic-startup { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
+        .topic-entrepreneur { background: rgba(59, 130, 246, 0.15); color: #60A5FA; }
+
+        .topic-tag.active {
+            box-shadow: 0 0 0 2px currentColor;
+        }
+
+        /* Copy Button */
+        .copy-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: var(--shadow);
+            animation: slideIn 0.3s ease-out;
+            min-width: 300px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .toast-icon {
+            font-size: 22px;
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .toast-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .content-grid,
+            .composer-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .suggestions-grid,
+            .template-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .calendar-grid {
+                font-size: 12px;
+            }
+
+            .calendar-day {
+                min-height: 80px;
+                padding: 6px;
+            }
+
+            .calendar-post {
+                font-size: 10px;
+                padding: 4px 6px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .nav-tabs {
+                width: 100%;
+                overflow-x: auto;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Topic Pills */
+        .topic-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .pill-ai { background: rgba(139, 92, 246, 0.2); color: #A78BFA; }
+        .pill-value { background: rgba(34, 197, 94, 0.2); color: #4ADE80; }
+        .pill-startup { background: rgba(245, 158, 11, 0.2); color: #FBBF24; }
+        .pill-entrepreneur { background: rgba(59, 130, 246, 0.2); color: #60A5FA; }
+
+        /* Workflow Steps */
+        .workflow-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-sm);
+            margin-bottom: 20px;
+        }
+
+        .workflow-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .workflow-step.active {
+            background: var(--valo-purple);
+            color: white;
+        }
+
+        .workflow-step.completed {
+            color: var(--success);
+        }
+
+        .workflow-arrow {
+            color: var(--text-muted);
+        }
+
+        /* Icon helpers */
+        .icon-calendar::before { content: "📅"; }
+        .icon-queue::before { content: "📋"; }
+        .icon-suggestions::before { content: "✨"; }
+        .icon-compose::before { content: "✏️"; }
+        .icon-plus::before { content: "+"; font-weight: 700; }
+        .icon-close::before { content: "×"; font-size: 20px; }
+        .icon-edit::before { content: "✏️"; }
+        .icon-delete::before { content: "🗑️"; }
+        .icon-copy::before { content: "📋"; }
+        .icon-check::before { content: "✓"; }
+        .icon-chevron-left::before { content: "‹"; font-size: 24px; }
+        .icon-chevron-right::before { content: "›"; font-size: 24px; }
+        .icon-linkedin::before { content: "💼"; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">V</div>
+                <div class="logo-text">
+                    <h1>VALO LinkedIn Scheduler</h1>
+                    <span>Thought Leadership Content Manager</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openComposer()">
+                    <span style="font-weight: 700;">+</span>
+                    New Post
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('calendar')">
+                <span class="icon-calendar"></span>
+                Calendar
+            </button>
+            <button class="nav-tab" onclick="switchTab('queue')">
+                <span class="icon-queue"></span>
+                Content Queue
+            </button>
+            <button class="nav-tab" onclick="switchTab('composer')">
+                <span class="icon-compose"></span>
+                Composer
+            </button>
+            <button class="nav-tab" onclick="switchTab('suggestions')">
+                <span class="icon-suggestions"></span>
+                Topic Ideas
+            </button>
+        </nav>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-label">Total Posts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-draft">0</div>
+                <div class="stat-label">Drafts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-scheduled">0</div>
+                <div class="stat-label">Scheduled</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-posted">0</div>
+                <div class="stat-label">Posted</div>
+            </div>
+        </div>
+
+        <!-- Calendar Panel -->
+        <div id="calendar-panel" class="panel active">
+            <div class="calendar-header">
+                <div class="calendar-nav">
+                    <button class="btn btn-icon btn-secondary" onclick="changeMonth(-1)">
+                        <span class="icon-chevron-left"></span>
+                    </button>
+                    <div class="calendar-title" id="calendar-title">January 2025</div>
+                    <button class="btn btn-icon btn-secondary" onclick="changeMonth(1)">
+                        <span class="icon-chevron-right"></span>
+                    </button>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="goToToday()">Today</button>
+            </div>
+
+            <div class="calendar-grid" id="calendar-grid">
+                <!-- Calendar generated by JS -->
+            </div>
+        </div>
+
+        <!-- Queue Panel -->
+        <div id="queue-panel" class="panel">
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Content Queue</h3>
+                        <div class="filters">
+                            <select class="form-select" id="queue-filter-status" onchange="renderQueue()" style="width: auto;">
+                                <option value="all">All Status</option>
+                                <option value="draft">Draft</option>
+                                <option value="scheduled">Scheduled</option>
+                                <option value="posted">Posted</option>
+                            </select>
+                            <select class="form-select" id="queue-filter-type" onchange="renderQueue()" style="width: auto;">
+                                <option value="all">All Types</option>
+                                <option value="story">Story</option>
+                                <option value="list">List</option>
+                                <option value="hottake">Hot Take</option>
+                                <option value="question">Question</option>
+                                <option value="framework">Framework</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="queue-list" id="queue-list">
+                        <!-- Queue items generated by JS -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Analytics</h3>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">By Type</div>
+                            <div id="type-stats" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Type stats generated by JS -->
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">By Topic</div>
+                            <div id="topic-stats" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Topic stats generated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Composer Panel -->
+        <div id="composer-panel" class="panel">
+            <div class="composer-container">
+                <div class="composer-main">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Post Composer</h3>
+                        </div>
+                        
+                        <!-- Template Selector -->
+                        <div class="form-group">
+                            <label class="form-label">Choose Template</label>
+                            <div class="template-grid">
+                                <div class="template-option" data-template="story" onclick="selectTemplate('story')">
+                                    <div class="template-icon">📖</div>
+                                    <div class="template-name">Story</div>
+                                </div>
+                                <div class="template-option" data-template="list" onclick="selectTemplate('list')">
+                                    <div class="template-icon">📋</div>
+                                    <div class="template-name">List</div>
+                                </div>
+                                <div class="template-option" data-template="hottake" onclick="selectTemplate('hottake')">
+                                    <div class="template-icon">🔥</div>
+                                    <div class="template-name">Hot Take</div>
+                                </div>
+                                <div class="template-option" data-template="question" onclick="selectTemplate('question')">
+                                    <div class="template-icon">❓</div>
+                                    <div class="template-name">Question</div>
+                                </div>
+                                <div class="template-option" data-template="framework" onclick="selectTemplate('framework')">
+                                    <div class="template-icon">🏗️</div>
+                                    <div class="template-name">Framework</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Post Content -->
+                        <div class="form-group">
+                            <label class="form-label">Post Content</label>
+                            <textarea class="form-textarea" id="composer-content" placeholder="Write your LinkedIn post here..."></textarea>
+                            <div class="char-count" id="char-count">0 / 3,000 characters</div>
+                        </div>
+
+                        <!-- Topic Tags -->
+                        <div class="form-group">
+                            <label class="form-label">Topics (click to add hashtag)</label>
+                            <div class="topic-tags">
+                                <span class="topic-tag topic-ai" data-tag="AIReadiness" onclick="addHashtag('AIReadiness')">#AIReadiness</span>
+                                <span class="topic-tag topic-value" data-tag="ValueProposition" onclick="addHashtag('ValueProposition')">#ValueProposition</span>
+                                <span class="topic-tag topic-startup" data-tag="StartupCulture" onclick="addHashtag('StartupCulture')">#StartupCulture</span>
+                                <span class="topic-tag topic-entrepreneur" data-tag="Entrepreneurship" onclick="addHashtag('Entrepreneurship')">#Entrepreneurship</span>
+                                <span class="topic-tag topic-ai" data-tag="ArtificialIntelligence" onclick="addHashtag('ArtificialIntelligence')">#AI</span>
+                                <span class="topic-tag topic-value" data-tag="Leadership" onclick="addHashtag('Leadership')">#Leadership</span>
+                                <span class="topic-tag topic-startup" data-tag="Innovation" onclick="addHashtag('Innovation')">#Innovation</span>
+                                <span class="topic-tag topic-entrepreneur" data-tag="BusinessGrowth" onclick="addHashtag('BusinessGrowth')">#BusinessGrowth</span>
+                            </div>
+                        </div>
+
+                        <!-- Post Settings -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label class="form-label">Scheduled Date</label>
+                                <input type="date" class="form-input" id="composer-date">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="composer-status">
+                                    <option value="draft">Draft</option>
+                                    <option value="scheduled">Scheduled</option>
+                                    <option value="posted">Posted</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button class="btn btn-primary" onclick="savePost()">
+                                💾 Save Post
+                            </button>
+                            <button class="btn btn-secondary" onclick="copyToClipboard()">
+                                📋 Copy for LinkedIn
+                            </button>
+                            <button class="btn btn-ghost" onclick="clearComposer()">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="composer-sidebar">
+                    <!-- Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Preview</h3>
+                        </div>
+                        <div class="preview-card">
+                            <div class="preview-header">
+                                <div class="preview-avatar">CM</div>
+                                <div class="preview-meta">
+                                    <div class="preview-name">Chris McMenemy</div>
+                                    <div class="preview-title">Founder at VALO</div>
+                                    <div class="preview-time">Just now</div>
+                                </div>
+                            </div>
+                            <div class="preview-content" id="preview-content">
+                                Your post content will appear here...
+                            </div>
+                            <div class="preview-actions">
+                                <div class="preview-action">👍 Like</div>
+                                <div class="preview-action">💬 Comment</div>
+                                <div class="preview-action">🔄 Repost</div>
+                                <div class="preview-action">📤 Send</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Template Tips</h3>
+                        </div>
+                        <div id="template-tips" style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                            <p>Select a template above to see tips for that format.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Suggestions Panel -->
+        <div id="suggestions-panel" class="panel">
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h3 class="card-title">Topic Ideas for Chris</h3>
+                    <span style="font-size: 13px; color: var(--text-secondary);">Click any idea to use it</span>
+                </div>
+                <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;">
+                    These suggestions are tailored to Chris's core content themes: AI Readiness, Value Proposition, Startup Culture, and Entrepreneurship.
+                </p>
+                <div class="suggestions-grid" id="suggestions-grid">
+                    <!-- Suggestions generated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Post</h3>
+                <button class="modal-close" onclick="closeEditModal()">
+                    <span class="icon-close"></span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-post-id">
+                <div class="form-group">
+                    <label class="form-label">Content</label>
+                    <textarea class="form-textarea" id="edit-content" rows="8"></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" id="edit-type">
+                            <option value="story">Story</option>
+                            <option value="list">List</option>
+                            <option value="hottake">Hot Take</option>
+                            <option value="question">Question</option>
+                            <option value="framework">Framework</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="edit-status">
+                            <option value="draft">Draft</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="posted">Posted</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Scheduled Date</label>
+                    <input type="date" class="form-input" id="edit-date">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        // Data Store
+        let posts = JSON.parse(localStorage.getItem('valo_linkedin_posts')) || [];
+        let currentDate = new Date();
+        let draggedPost = null;
+        let currentTemplate = 'story';
+
+        // Topic Suggestions Database
+        const topicSuggestions = [
+            {
+                category: 'ai',
+                categoryLabel: 'AI Readiness',
+                title: 'The 5-Step AI Readiness Assessment for SMEs',
+                description: 'A practical framework for evaluating your organization\'s preparedness for AI adoption.',
+                template: 'framework'
+            },
+            {
+                category: 'ai',
+                categoryLabel: 'AI Readiness',
+                title: 'Why Most AI Pilots Fail (And How to Fix Yours)',
+                description: 'Common pitfalls in AI implementation and strategies to ensure successful deployment.',
+                template: 'list'
+            },
+            {
+                category: 'ai',
+                categoryLabel: 'AI Readiness',
+                title: 'I spent 6 months implementing AI tools. Here\'s what actually worked.',
+                description: 'Personal story about real-world AI implementation lessons learned.',
+                template: 'story'
+            },
+            {
+                category: 'value',
+                categoryLabel: 'Value Proposition',
+                title: 'The Art of Articulating Value in Technical Sales',
+                description: 'Bridging the gap between technical features and business value for complex B2B solutions.',
+                template: 'framework'
+            },
+            {
+                category: 'value',
+                categoryLabel: 'Value Proposition',
+                title: 'Value-Based Pricing vs. Cost-Plus: A Decision Framework',
+                description: 'When and how to shift from cost-based to value-based pricing models.',
+                template: 'framework'
+            },
+            {
+                category: 'value',
+                categoryLabel: 'Value Proposition',
+                title: 'Stop selling features. Start selling outcomes.',
+                description: 'Hot take on why feature-focused sales decks are killing your close rate.',
+                template: 'hottake'
+            },
+            {
+                category: 'startup',
+                categoryLabel: 'Startup Culture',
+                title: 'Scaling Culture: From 10 to 100 Employees',
+                description: 'How to preserve your startup\'s DNA while building structure for growth.',
+                template: 'story'
+            },
+            {
+                category: 'startup',
+                categoryLabel: 'Startup Culture',
+                title: 'The Remote-First Playbook for Startup Founders',
+                description: 'Building a cohesive culture when your team is distributed across time zones.',
+                template: 'list'
+            },
+            {
+                category: 'startup',
+                categoryLabel: 'Startup Culture',
+                title: 'Unpopular opinion: Culture fit is just a way to hire people like you',
+                description: 'Why culture-add beats culture-fit every time.',
+                template: 'hottake'
+            },
+            {
+                category: 'entrepreneur',
+                categoryLabel: 'Entrepreneurship',
+                title: 'The Founder\'s Dilemma: When to Pivot vs. Persevere',
+                description: 'A decision framework for navigating the toughest strategic choices in early-stage ventures.',
+                template: 'framework'
+            },
+            {
+                category: 'entrepreneur',
+                categoryLabel: 'Entrepreneurship',
+                title: 'Bootstrapping vs. VC: Which path is right for your business?',
+                description: 'Breaking down the trade-offs between self-funding and venture capital.',
+                template: 'question'
+            },
+            {
+                category: 'entrepreneur',
+                categoryLabel: 'Entrepreneurship',
+                title: 'The 3 AM Founder Thoughts Nobody Talks About',
+                description: 'Real talk about the mental side of entrepreneurship.',
+                template: 'story'
+            }
+        ];
+
+        // Template Definitions
+        const templates = {
+            story: {
+                name: 'Story',
+                icon: '📖',
+                tips: `
+                    <strong>Story Template Tips:</strong><br><br>
+                    • Start with a hook that creates curiosity<br>
+                    • Share a personal or relatable experience<br>
+                    • Build tension or conflict in the middle<br>
+                    • End with a clear lesson or takeaway<br>
+                    • Keep it authentic and conversational
+                `,
+                placeholder: "Share a personal story that taught you something valuable..."
+            },
+            list: {
+                name: 'List',
+                icon: '📋',
+                tips: `
+                    <strong>List Template Tips:</strong><br><br>
+                    • Use odd numbers (3, 5, 7) for better engagement<br>
+                    • Make your headline specific and compelling<br>
+                    • Keep each point concise but valuable<br>
+                    • Use emojis or bullets for visual breaks<br>
+                    • End with a call to action
+                `,
+                placeholder: "Here are 5 lessons I've learned about [topic]:\n\n1. \n2. \n3. \n4. \n5. "
+            },
+            hottake: {
+                name: 'Hot Take',
+                icon: '🔥',
+                tips: `
+                    <strong>Hot Take Template Tips:</strong><br><br>
+                    • Start with a bold, contrarian statement<br>
+                    • Acknowledge why people might disagree<br>
+                    • Back it up with experience or data<br>
+                    • Invite respectful debate in comments<br>
+                    • Be prepared for pushback!
+                `,
+                placeholder: "Unpopular opinion: [your bold statement]\n\nHere's why I believe this..."
+            },
+            question: {
+                name: 'Question',
+                icon: '❓',
+                tips: `
+                    <strong>Question Template Tips:</strong><br><br>
+                    • Ask something that sparks genuine curiosity<br>
+                    • Make it relevant to your audience's challenges<br>
+                    • Share your own perspective first<br>
+                    • Encourage diverse viewpoints<br>
+                    • Engage with every comment
+                `,
+                placeholder: "What's your take on [topic]?\n\nI've been thinking about this because..."
+            },
+            framework: {
+                name: 'Framework',
+                icon: '🏗️',
+                tips: `
+                    <strong>Framework Template Tips:</strong><br><br>
+                    • Give your framework a memorable name<br>
+                    • Explain the problem it solves<br>
+                    • Break down each component clearly<br>
+                    • Include examples for each step<br>
+                    • Offer to share more details
+                `,
+                placeholder: "I call this the [Name] Framework:\n\nStep 1: \nStep 2: \nStep 3: \n\nHere's how it works..."
+            }
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCalendar();
+            renderQueue();
+            renderSuggestions();
+            updateStats();
+            selectTemplate('story');
+            
+            // Set today's date in composer
+            document.getElementById('composer-date').value = formatDate(new Date());
+            
+            // Character count listener
+            document.getElementById('composer-content').addEventListener('input', updateCharCount);
+        });
+
+        // Tab Switching
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            
+            event.target.closest('.nav-tab').classList.add('active');
+            document.getElementById(`${tab}-panel`).classList.add('active');
+            
+            if (tab === 'queue') renderQueue();
+            if (tab === 'calendar') renderCalendar();
+            if (tab === 'suggestions') renderSuggestions();
+        }
+
+        function openComposer() {
+            switchTab('composer');
+            document.querySelector('.nav-tab:nth-child(3)').classList.add('active');
+        }
+
+        // Calendar Functions
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            document.getElementById('calendar-title').textContent = 
+                new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startDayOfWeek = firstDay.getDay();
+
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            // Day headers
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dayNames.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'calendar-day-header';
+                header.textContent = day;
+                grid.appendChild(header);
+            });
+
+            // Previous month days
+            const prevMonth = new Date(year, month, 0);
+            for (let i = startDayOfWeek - 1; i >= 0; i--) {
+                const day = prevMonth.getDate() - i;
+                grid.appendChild(createDayCell(day, true, year, month - 1));
+            }
+
+            // Current month days
+            for (let day = 1; day <= daysInMonth; day++) {
+                grid.appendChild(createDayCell(day, false, year, month));
+            }
+
+            // Next month days
+            const remainingCells = 42 - (startDayOfWeek + daysInMonth);
+            for (let day = 1; day <= remainingCells; day++) {
+                grid.appendChild(createDayCell(day, true, year, month + 1));
+            }
+        }
+
+        function createDayCell(day, isOtherMonth, year, month) {
+            const date = new Date(year, month, day);
+            const dateStr = formatDate(date);
+            const isToday = isSameDay(date, new Date());
+            
+            const cell = document.createElement('div');
+            cell.className = `calendar-day ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`;
+            cell.dataset.date = dateStr;
+            
+            cell.innerHTML = `<div class="day-number">${day}</div><div class="day-content"></div>`;
+            
+            // Add posts for this day
+            const dayPosts = posts.filter(post => post.date === dateStr);
+            const contentContainer = cell.querySelector('.day-content');
+            
+            dayPosts.forEach(post => {
+                const postEl = createCalendarPost(post);
+                contentContainer.appendChild(postEl);
+            });
+
+            // Click to add
+            cell.addEventListener('click', (e) => {
+                if (e.target === cell || e.target.classList.contains('day-number')) {
+                    openComposerWithDate(dateStr);
+                }
+            });
+
+            // Drag and drop
+            cell.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                cell.classList.add('drag-over');
+            });
+
+            cell.addEventListener('dragleave', () => {
+                cell.classList.remove('drag-over');
+            });
+
+            cell.addEventListener('drop', (e) => {
+                e.preventDefault();
+                cell.classList.remove('drag-over');
+                if (draggedPost) {
+                    draggedPost.date = dateStr;
+                    if (draggedPost.status === 'draft') {
+                        draggedPost.status = 'scheduled';
+                    }
+                    saveData();
+                    renderCalendar();
+                    renderQueue();
+                    updateStats();
+                    showToast('Post rescheduled', `Moved to ${formatDisplayDate(dateStr)}`);
+                }
+            });
+
+            return cell;
+        }
+
+        function createCalendarPost(post) {
+            const el = document.createElement('div');
+            el.className = `calendar-post status-${post.status}`;
+            el.draggable = true;
+            
+            const typeIcon = templates[post.type]?.icon || '📝';
+            
+            el.innerHTML = `
+                <span style="margin-right: 4px;">${typeIcon}</span>
+                ${escapeHtml(post.content.substring(0, 30))}...
+            `;
+            
+            el.addEventListener('dragstart', () => {
+                draggedPost = post;
+                el.classList.add('dragging');
+            });
+
+            el.addEventListener('dragend', () => {
+                draggedPost = null;
+                el.classList.remove('dragging');
+            });
+
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openEditModal(post);
+            });
+
+            return el;
+        }
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function goToToday() {
+            currentDate = new Date();
+            renderCalendar();
+        }
+
+        // Queue Functions
+        function renderQueue() {
+            const statusFilter = document.getElementById('queue-filter-status').value;
+            const typeFilter = document.getElementById('queue-filter-type').value;
+            
+            let filtered = posts.filter(post => {
+                if (statusFilter !== 'all' && post.status !== statusFilter) return false;
+                if (typeFilter !== 'all' && post.type !== typeFilter) return false;
+                return true;
+            });
+
+            // Sort by date
+            filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const container = document.getElementById('queue-list');
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-title">No posts found</div>
+                        <p>Create a new post or adjust your filters</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = filtered.map(post => createQueueItem(post)).join('');
+            }
+
+            // Update stats
+            renderTypeStats();
+            renderTopicStats();
+        }
+
+        function createQueueItem(post) {
+            const typeLabels = {
+                story: 'Story',
+                list: 'List',
+                hottake: 'Hot Take',
+                question: 'Question',
+                framework: 'Framework'
+            };
+
+            const typeClasses = {
+                story: 'type-story',
+                list: 'type-list',
+                hottake: 'type-hottake',
+                question: 'type-question',
+                framework: 'type-framework'
+            };
+
+            const typeIcon = templates[post.type]?.icon || '📝';
+
+            return `
+                <div class="queue-item animate-in" onclick="openEditModalById('${post.id}')" draggable="true" data-id="${post.id}">
+                    <div class="queue-item-icon" style="background: var(--bg-input);">
+                        ${typeIcon}
+                    </div>
+                    <div class="queue-item-content">
+                        <div class="queue-item-title">${escapeHtml(post.content.substring(0, 60))}${post.content.length > 60 ? '...' : ''}</div>
+                        <div class="queue-item-meta">
+                            <span class="status-badge status-${post.status}">${post.status}</span>
+                            <span class="type-badge ${typeClasses[post.type]}">${typeLabels[post.type]}</span>
+                            <span>${formatDisplayDate(post.date)}</span>
+                        </div>
+                    </div>
+                    <div class="queue-item-actions">
+                        <button class="btn btn-icon btn-sm btn-secondary" onclick="event.stopPropagation(); copyPostToClipboard('${post.id}')" title="Copy">
+                            📋
+                        </button>
+                        <button class="btn btn-icon btn-sm btn-secondary" onclick="event.stopPropagation(); deletePost('${post.id}')" title="Delete">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTypeStats() {
+            const types = ['story', 'list', 'hottake', 'question', 'framework'];
+            const labels = { story: 'Story', list: 'List', hottake: 'Hot Take', question: 'Question', framework: 'Framework' };
+            const counts = {};
+            types.forEach(t => counts[t] = posts.filter(p => p.type === t).length);
+            
+            const container = document.getElementById('type-stats');
+            container.innerHTML = types.map(t => `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="text-transform: capitalize; font-size: 13px;">${labels[t]}</span>
+                    <span style="font-weight: 600; color: var(--valo-purple-light);">${counts[t]}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderTopicStats() {
+            const topics = [
+                { key: 'ai', label: 'AI Readiness' },
+                { key: 'value', label: 'Value Prop' },
+                { key: 'startup', label: 'Startup Culture' },
+                { key: 'entrepreneur', label: 'Entrepreneurship' }
+            ];
+            
+            const container = document.getElementById('topic-stats');
+            container.innerHTML = topics.map(t => {
+                const count = posts.filter(p => p.category === t.key).length;
+                return `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px;">${t.label}</span>
+                        <span style="font-weight: 600; color: var(--valo-purple-light);">${count}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Composer Functions
+        function selectTemplate(template) {
+            currentTemplate = template;
+            
+            // Update UI
+            document.querySelectorAll('.template-option').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelector(`[data-template="${template}"]`).classList.add('active');
+            
+            // Update tips
+            document.getElementById('template-tips').innerHTML = templates[template].tips;
+            
+            // Update placeholder if empty
+            const contentEl = document.getElementById('composer-content');
+            if (!contentEl.value) {
+                contentEl.placeholder = templates[template].placeholder;
+            }
+        }
+
+        function updateCharCount() {
+            const content = document.getElementById('composer-content').value;
+            const count = content.length;
+            const el = document.getElementById('char-count');
+            
+            el.textContent = `${count.toLocaleString()} / 3,000 characters`;
+            
+            // Update preview
+            document.getElementById('preview-content').textContent = content || 'Your post content will appear here...';
+            
+            // Styling based on count
+            el.classList.remove('warning', 'error');
+            if (count > 2800) {
+                el.classList.add('error');
+            } else if (count > 2500) {
+                el.classList.add('warning');
+            }
+        }
+
+        function addHashtag(tag) {
+            const contentEl = document.getElementById('composer-content');
+            const hashtag = ` #${tag}`;
+            
+            if (!contentEl.value.includes(hashtag.trim())) {
+                contentEl.value += hashtag;
+                updateCharCount();
+            }
+            
+            // Visual feedback
+            const tagEl = document.querySelector(`[data-tag="${tag}"]`);
+            tagEl.classList.add('active');
+            setTimeout(() => tagEl.classList.remove('active'), 500);
+        }
+
+        function savePost() {
+            const content = document.getElementById('composer-content').value.trim();
+            const date = document.getElementById('composer-date').value;
+            const status = document.getElementById('composer-status').value;
+
+            if (!content) {
+                showToast('Error', 'Please write some content for your post', 'error');
+                return;
+            }
+
+            // Detect category from hashtags
+            let category = 'entrepreneur';
+            if (content.includes('#AI') || content.includes('#AIReadiness')) category = 'ai';
+            else if (content.includes('#Value') || content.includes('#Leadership')) category = 'value';
+            else if (content.includes('#Startup') || content.includes('#Innovation')) category = 'startup';
+
+            posts.push({
+                id: Date.now().toString(),
+                content,
+                type: currentTemplate,
+                category,
+                status,
+                date,
+                createdAt: new Date().toISOString()
+            });
+
+            saveData();
+            updateStats();
+            renderCalendar();
+            renderQueue();
+            
+            showToast('Post saved', 'Your post has been added to the schedule');
+            
+            // Clear composer
+            clearComposer();
+        }
+
+        function clearComposer() {
+            document.getElementById('composer-content').value = '';
+            document.getElementById('composer-date').value = formatDate(new Date());
+            document.getElementById('composer-status').value = 'draft';
+            updateCharCount();
+            selectTemplate('story');
+        }
+
+        function openComposerWithDate(dateStr) {
+            switchTab('composer');
+            document.querySelector('.nav-tab:nth-child(3)').classList.add('active');
+            document.getElementById('composer-date').value = dateStr;
+            document.getElementById('composer-status').value = 'scheduled';
+            document.getElementById('composer-content').focus();
+        }
+
+        // Suggestions Functions
+        function renderSuggestions() {
+            const container = document.getElementById('suggestions-grid');
+            container.innerHTML = topicSuggestions.map((s, index) => `
+                <div class="suggestion-card" onclick="useSuggestion(${index})">
+                    <div class="suggestion-category">${s.categoryLabel}</div>
+                    <div class="suggestion-title">${s.title}</div>
+                    <div class="suggestion-description">${s.description}</div>
+                    <div class="suggestion-actions">
+                        <button class="btn btn-primary btn-sm">Use This Idea</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function useSuggestion(index) {
+            const suggestion = topicSuggestions[index];
+            
+            switchTab('composer');
+            document.querySelector('.nav-tab:nth-child(3)').classList.add('active');
+            
+            selectTemplate(suggestion.template);
+            document.getElementById('composer-content').value = suggestion.title + '\n\n';
+            updateCharCount();
+            
+            // Add relevant hashtag
+            addHashtag(suggestion.category === 'ai' ? 'AIReadiness' : 
+                       suggestion.category === 'value' ? 'ValueProposition' :
+                       suggestion.category === 'startup' ? 'StartupCulture' : 'Entrepreneurship');
+        }
+
+        // Edit Modal Functions
+        function openEditModal(post) {
+            document.getElementById('edit-post-id').value = post.id;
+            document.getElementById('edit-content').value = post.content;
+            document.getElementById('edit-type').value = post.type;
+            document.getElementById('edit-status').value = post.status;
+            document.getElementById('edit-date').value = post.date;
+            
+            document.getElementById('edit-modal').classList.add('active');
+        }
+
+        function openEditModalById(id) {
+            const post = posts.find(p => p.id === id);
+            if (post) openEditModal(post);
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('active');
+        }
+
+        function saveEdit() {
+            const id = document.getElementById('edit-post-id').value;
+            const post = posts.find(p => p.id === id);
+            
+            if (post) {
+                post.content = document.getElementById('edit-content').value;
+                post.type = document.getElementById('edit-type').value;
+                post.status = document.getElementById('edit-status').value;
+                post.date = document.getElementById('edit-date').value;
+                
+                saveData();
+                renderCalendar();
+                renderQueue();
+                updateStats();
+                closeEditModal();
+                showToast('Post updated', 'Your changes have been saved');
+            }
+        }
+
+        // Copy Functions
+        function copyToClipboard() {
+            const content = document.getElementById('composer-content').value;
+            if (!content.trim()) {
+                showToast('Error', 'Nothing to copy', 'error');
+                return;
+            }
+            
+            navigator.clipboard.writeText(content).then(() => {
+                showToast('Copied!', 'Post copied to clipboard - ready for LinkedIn');
+            }).catch(() => {
+                showToast('Error', 'Failed to copy', 'error');
+            });
+        }
+
+        function copyPostToClipboard(id) {
+            const post = posts.find(p => p.id === id);
+            if (post) {
+                navigator.clipboard.writeText(post.content).then(() => {
+                    showToast('Copied!', 'Post copied to clipboard');
+                });
+            }
+        }
+
+        // Delete Function
+        function deletePost(id) {
+            if (confirm('Are you sure you want to delete this post?')) {
+                posts = posts.filter(p => p.id !== id);
+                saveData();
+                renderCalendar();
+                renderQueue();
+                updateStats();
+                showToast('Deleted', 'Post removed');
+            }
+        }
+
+        // Stats
+        function updateStats() {
+            document.getElementById('stat-total').textContent = posts.length;
+            document.getElementById('stat-draft').textContent = posts.filter(p => p.status === 'draft').length;
+            document.getElementById('stat-scheduled').textContent = posts.filter(p => p.status === 'scheduled').length;
+            document.getElementById('stat-posted').textContent = posts.filter(p => p.status === 'posted').length;
+        }
+
+        // Storage
+        function saveData() {
+            localStorage.setItem('valo_linkedin_posts', JSON.stringify(posts));
+        }
+
+        // Utilities
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function formatDisplayDate(dateStr) {
+            return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function isSameDay(d1, d2) {
+            return d1.getFullYear() === d2.getFullYear() &&
+                   d1.getMonth() === d2.getMonth() &&
+                   d1.getDate() === d2.getDate();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Toast
+        function showToast(title, message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
